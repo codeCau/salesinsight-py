@@ -1,7 +1,7 @@
 """
 SalesInsight PY — Análise de Dados de Vendas com Python
 Módulo 01 - Escopo Semanas 01 a 05
-Etapa 5: RF01 ao RF05 (Dataset, Inspeção, Limpeza, Derivações e Métricas Agregadas)
+Etapa 6: RF01 ao RF06 (Carga, Inspeção, Limpeza, Derivações, Métricas e Segmentação)
 """
 
 import csv
@@ -204,10 +204,7 @@ def criar_colunas_derivadas(registros):
 # RF05 - CÁLCULO DE MÉTRICAS ANALÍTICAS
 # ==========================================
 def calcular_metricas(registros):
-    """
-    Calcula agregações de faturamento temporal, produtos mais vendidos,
-    receita por categoria e eficiência regional em passada única O(n).
-    """
+    """Calcula faturamento temporal, produtos mais vendidos e eficiência regional."""
     mensal = {}
     produtos_rev = {}
     produtos_qtd = {}
@@ -226,31 +223,25 @@ def calcular_metricas(registros):
         receita_global += receita
         itens_globais += qtd
 
-        # Agrupamento temporal
         if chave_mes not in mensal:
             mensal[chave_mes] = {"receita": 0.0, "itens": 0, "transacoes": 0}
         mensal[chave_mes]["receita"] += receita
         mensal[chave_mes]["itens"] += qtd
         mensal[chave_mes]["transacoes"] += 1
 
-        # Produtos
         prod = r["produto"]
         produtos_rev[prod] = produtos_rev.get(prod, 0.0) + receita
         produtos_qtd[prod] = produtos_qtd.get(prod, 0) + qtd
 
-        # Categorias
         cat = r["categoria"]
         categorias_rev[cat] = categorias_rev.get(cat, 0.0) + receita
 
-        # Regiões
         reg = r["regiao"]
         regioes_rev[reg] = regioes_rev.get(reg, 0.0) + receita
         regioes_qtd_transacoes[reg] = regioes_qtd_transacoes.get(reg, 0) + 1
 
-    # Top 5 produtos por receita decrescente
     top_5_produtos = sorted(produtos_rev.items(), key=lambda x: x[1], reverse=True)[:5]
 
-    # Ticket médio regional
     ticket_medio_regional = {
         reg: round(regioes_rev[reg] / regioes_qtd_transacoes[reg], 2)
         for reg in regioes_rev
@@ -282,6 +273,51 @@ def calcular_metricas(registros):
     }
 
 
+# ==========================================
+# RF06 - SEGMENTAÇÃO DE CARTEIRA DE CLIENTES
+# ==========================================
+def segmentar_clientes(registros):
+    """
+    Agrupa o consumo financeiro acumulado por cliente e classifica a carteira
+    em Bronze, Prata e Ouro utilizando uma expressão lambda.
+    """
+    gastos_clientes = {}
+    for r in registros:
+        cli = r["cliente"]
+        gastos_clientes[cli] = gastos_clientes.get(cli, 0.0) + r["receita_total"]
+
+    # Expressão lambda de segmentação
+    classificar_segmento = lambda gasto: (
+        "Ouro" if gasto > 15000 else ("Prata" if gasto >= 5000 else "Bronze")
+    )
+
+    clientes_segmentados = []
+    for cliente, gasto_total in gastos_clientes.items():
+        clientes_segmentados.append({
+            "cliente": cliente,
+            "total_gasto": round(gasto_total, 2),
+            "segmento": classificar_segmento(gasto_total)
+        })
+
+    # Ordenar pelo maior volume financeiro decrescente
+    clientes_segmentados.sort(key=lambda c: c["total_gasto"], reverse=True)
+
+    contagem_segmentos = {"Bronze": 0, "Prata": 0, "Ouro": 0}
+    for c in clientes_segmentados:
+        contagem_segmentos[c["segmento"]] += 1
+
+    print("\n" + "=" * 50)
+    print("=== RF06: SEGMENTAÇÃO DE CARTEIRA ===")
+    print("=" * 50)
+    print(f"Clientes únicos identificados: {len(clientes_segmentados)}")
+    print(f"Distribuição de carteira:     {contagem_segmentos}")
+    print("\nTop 3 Maiores Compradores:")
+    for cli in clientes_segmentados[:3]:
+        print(f"  {cli['cliente']}: R$ {cli['total_gasto']:,.2f} ({cli['segmento']})")
+
+    return clientes_segmentados
+
+
 if __name__ == "__main__":
     gerar_dataset_vendas()
     dados_brutos = carregar_dataset()
@@ -289,3 +325,4 @@ if __name__ == "__main__":
     dados_limpos, relatorio = limpar_dados(dados_brutos)
     dados_enriquecidos = criar_colunas_derivadas(dados_limpos)
     metricas = calcular_metricas(dados_enriquecidos)
+    clientes_seg = segmentar_clientes(dados_enriquecidos)
