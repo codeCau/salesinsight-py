@@ -1,0 +1,40 @@
+{
+  "faturamento_global": 1290346.3,
+  "itens_globais": 1031,
+  "ticket_medio_global": 7051.07,
+  "transacoes_acima_media": 70,
+  "top_5_produtos": [
+    {
+      "produto": "Notebook",
+      "receita": 374174.85
+    },
+    {
+      "produto": "Tablet",
+      "receita": 335335.83
+    },
+    {
+      "produto": "Smartphone",
+      "receita": 303255.94
+    },
+    {
+      "produto": "Monitor",
+      "receita": 169554.67
+    },
+    {
+      "produto": "Headset",
+      "receita": 48368.37
+    }
+  ],
+  "receita_por_categoria": {
+    "Perifericos": 108025.01,
+    "Celulares": 638591.77,
+    "Computadores": 543729.52
+  },
+  "ticket_medio_regional": {
+    "Sudeste": 7203.38,
+    "Centro-Oeste": 5688.07,
+    "Norte": 7140.89,
+    "Sul": 6521.42,
+    "Nordeste": 8721.93
+  }
+}

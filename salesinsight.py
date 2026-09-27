@@ -1,10 +1,12 @@
 """
 SalesInsight PY — Análise de Dados de Vendas com Python
 Módulo 01 - Escopo Semanas 01 a 05
-Etapa 6: RF01 ao RF06 (Carga, Inspeção, Limpeza, Derivações, Métricas e Segmentação)
+Pipeline analítico completo (RF01 ao RF09) utilizando apenas biblioteca padrão.
 """
 
 import csv
+import json
+import os
 import random
 import re
 from datetime import datetime, timedelta
@@ -14,7 +16,10 @@ from datetime import datetime, timedelta
 # RF01 - GERAÇÃO E CARGA DO DATASET
 # ==========================================
 def gerar_dataset_vendas(caminho_csv="vendas.csv", n_registros=200, seed=42):
-    """Gera um dataset sintético de vendas com dados inconsistentes e grava em CSV."""
+    """
+    Gera um dataset sintético de vendas no varejo contendo inconsistências
+    controladas para simulação do pipeline e salva em formato CSV.
+    """
     random.seed(seed)
     produtos = ["Notebook", "Smartphone", "Tablet", "Monitor", "Teclado", "Mouse", "Headset"]
     categorias = {
@@ -47,6 +52,7 @@ def gerar_dataset_vendas(caminho_csv="vendas.csv", n_registros=200, seed=42):
             data_txt = data.strftime("%Y-%m-%d")
             cliente = f"Cliente_{random.randint(1, 50):03d}"
 
+            # Injeção controlada de inconsistências
             if random.random() < 0.05:
                 quantidade = ""
             if random.random() < 0.04:
@@ -74,11 +80,11 @@ def gerar_dataset_vendas(caminho_csv="vendas.csv", n_registros=200, seed=42):
                 "preco_unitario": preco,
             })
 
-    print(f"[RF01] Dataset pronto em '{caminho_csv}'.")
+    print(f"[RF01] Dataset gerado com sucesso: '{caminho_csv}' ({n_registros} registros).")
 
 
 def carregar_dataset(caminho_csv="vendas.csv"):
-    """Lê o arquivo CSV e retorna uma lista de dicionários."""
+    """Lê o arquivo CSV bruto e retorna uma lista de dicionários."""
     with open(caminho_csv, "r", encoding="utf-8") as f:
         leitor = csv.DictReader(f)
         return list(leitor)
@@ -88,7 +94,10 @@ def carregar_dataset(caminho_csv="vendas.csv"):
 # RF02 - INSPEÇÃO DOS DADOS BRUTOS
 # ==========================================
 def inspecionar_dados(registros):
-    """Exibe no console informações estruturais e contagem de campos vazios."""
+    """
+    Exibe a contagem total de linhas, colunas existentes e quantidade
+    de valores nulos/vazios em cada atributo.
+    """
     total = len(registros)
     colunas = list(registros[0].keys()) if registros else []
     nulos = {col: 0 for col in colunas}
@@ -98,20 +107,23 @@ def inspecionar_dados(registros):
             if linha.get(col, "").strip() == "":
                 nulos[col] += 1
 
-    print("\n" + "=" * 50)
-    print("=== RF02: INSPEÇÃO INICIAL DO DATASET ===")
-    print("=" * 50)
+    print("\n" + "=" * 55)
+    print("=== RF02: INSPEÇÃO ESTRUTURAL DO DATASET ===")
+    print("=" * 55)
     print(f"Total de registros: {total}")
-    print(f"Colunas: {colunas}")
-    print(f"Campos nulos identificados: {nulos}")
+    print(f"Colunas presentes: {colunas}")
+    print(f"Valores ausentes por coluna:\n{nulos}")
     return registros
 
 
 # ==========================================
-# RF03 - LIMPEZA E TRATAMENTO DOS DADOS
+# RF03 - LIMPEZA E SANITIZAÇÃO DOS DADOS
 # ==========================================
 def limpar_dados(registros):
-    """Limpa textos, converte tipos numéricos/datas e descarta nulos críticos."""
+    """
+    Higieniza textos com strip, valida e converte datas via datetime,
+    descarta registros corrompidos, converte numéricos e sanitiza clientes com regex.
+    """
     relatorio = {
         "iniciais": len(registros),
         "removidos_data": 0,
@@ -122,22 +134,27 @@ def limpar_dados(registros):
     limpos = []
 
     for linha in registros:
+        # Remoção de espaços em branco nas pontas
         for campo in ("cliente", "produto", "categoria", "regiao"):
             linha[campo] = linha[campo].strip()
 
+        # Validação temporal
         try:
             linha["data_venda"] = datetime.strptime(linha["data_venda"], "%Y-%m-%d")
         except ValueError:
             relatorio["removidos_data"] += 1
             continue
 
+        # Descarte de nulos críticos em quantidade e preço
         if linha["quantidade"] == "" or linha["preco_unitario"] == "":
             relatorio["removidos_nulos"] += 1
             continue
 
+        # Conversão de tipos primitivos
         linha["quantidade"] = int(float(linha["quantidade"]))
         linha["preco_unitario"] = float(linha["preco_unitario"])
 
+        # Higienização de strings com regex
         nome_limpo = re.sub(r"[^A-Za-z0-9_]", "", linha["cliente"])
         linha["cliente"] = nome_limpo
         linha["cliente_fora_do_padrao"] = padrao_cliente.match(nome_limpo) is None
@@ -146,13 +163,13 @@ def limpar_dados(registros):
 
     relatorio["finais"] = len(limpos)
 
-    print("\n" + "=" * 50)
-    print("=== RF03: RELATÓRIO DE LIMPEZA ===")
-    print("=" * 50)
+    print("\n" + "=" * 55)
+    print("=== RF03: RELATÓRIO DE HIGIENIZAÇÃO ===")
+    print("=" * 55)
     print(f"Registros iniciais:     {relatorio['iniciais']}")
-    print(f"Descartados por data:   {relatorio['removidos_data']}")
-    print(f"Descartados por nulos:  {relatorio['removidos_nulos']}")
-    print(f"Registros higienizados: {relatorio['finais']}")
+    print(f"Descarte por data:      {relatorio['removidos_data']}")
+    print(f"Descarte por nulos:     {relatorio['removidos_nulos']}")
+    print(f"Registros validados:    {relatorio['finais']}")
 
     return limpos, relatorio
 
@@ -161,7 +178,10 @@ def limpar_dados(registros):
 # RF04 - CRIAÇÃO DE COLUNAS DERIVADAS
 # ==========================================
 def criar_colunas_derivadas(registros):
-    """Calcula receita total, extrai componentes temporais e classifica faixas."""
+    """
+    Calcula o faturamento da transação, decompõe elementos de data
+    e categoriza a faixa de preço unitário utilizando condicionais.
+    """
     meses_nomes = [
         "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -192,10 +212,10 @@ def criar_colunas_derivadas(registros):
         else:
             r["faixa_receita_item"] = "Alto Valor"
 
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 55)
     print("=== RF04: COLUNAS DERIVADAS CRIADAS ===")
-    print("=" * 50)
-    print("Novas colunas geradas: receita_total, mes, mes_nome, ano, trimestre, faixa_receita_item")
+    print("=" * 55)
+    print("Colunas adicionadas: receita_total, mes, mes_nome, ano, trimestre, faixa_receita_item")
 
     return registros
 
@@ -204,7 +224,10 @@ def criar_colunas_derivadas(registros):
 # RF05 - CÁLCULO DE MÉTRICAS ANALÍTICAS
 # ==========================================
 def calcular_metricas(registros):
-    """Calcula faturamento temporal, produtos mais vendidos e eficiência regional."""
+    """
+    Calcula agregações de faturamento temporal, ranqueamento de produtos,
+    categorias e ticket médio regional em passada única O(n).
+    """
     mensal = {}
     produtos_rev = {}
     produtos_qtd = {}
@@ -250,11 +273,11 @@ def calcular_metricas(registros):
     media_receita_transacao = receita_global / len(registros) if registros else 0.0
     acima_da_media = sum(1 for r in registros if r["receita_total"] > media_receita_transacao)
 
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 55)
     print("=== RF05: RESUMO ANALÍTICO DAS VENDAS ===")
-    print("=" * 50)
+    print("=" * 55)
     print(f"Faturamento Global:     R$ {receita_global:,.2f}")
-    print(f"Itens Comercializados:  {itens_globais} unidades")
+    print(f"Total Itens Vendidos:   {itens_globais} unidades")
     print(f"Ticket Médio Global:    R$ {media_receita_transacao:,.2f}")
     print(f"Vendas Acima da Média:  {acima_da_media} transações")
     print("\nTop 5 Produtos por Faturamento:")
@@ -286,7 +309,6 @@ def segmentar_clientes(registros):
         cli = r["cliente"]
         gastos_clientes[cli] = gastos_clientes.get(cli, 0.0) + r["receita_total"]
 
-    # Expressão lambda de segmentação
     classificar_segmento = lambda gasto: (
         "Ouro" if gasto > 15000 else ("Prata" if gasto >= 5000 else "Bronze")
     )
@@ -299,30 +321,148 @@ def segmentar_clientes(registros):
             "segmento": classificar_segmento(gasto_total)
         })
 
-    # Ordenar pelo maior volume financeiro decrescente
     clientes_segmentados.sort(key=lambda c: c["total_gasto"], reverse=True)
 
     contagem_segmentos = {"Bronze": 0, "Prata": 0, "Ouro": 0}
     for c in clientes_segmentados:
         contagem_segmentos[c["segmento"]] += 1
 
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 55)
     print("=== RF06: SEGMENTAÇÃO DE CARTEIRA ===")
-    print("=" * 50)
+    print("=" * 55)
     print(f"Clientes únicos identificados: {len(clientes_segmentados)}")
     print(f"Distribuição de carteira:     {contagem_segmentos}")
-    print("\nTop 3 Maiores Compradores:")
-    for cli in clientes_segmentados[:3]:
-        print(f"  {cli['cliente']}: R$ {cli['total_gasto']:,.2f} ({cli['segmento']})")
 
     return clientes_segmentados
 
 
-if __name__ == "__main__":
-    gerar_dataset_vendas()
-    dados_brutos = carregar_dataset()
+# ==========================================
+# RF07 - FUNÇÃO DE ORDEM SUPERIOR
+# ==========================================
+def processar_coluna(registros, coluna_origem, coluna_destino, funcao_transformacao):
+    """
+    Função de ordem superior que recebe registros, nome da coluna de origem,
+    nome da nova coluna de destino e uma função/lambda de transformação para aplicar
+    elemento a elemento.
+    """
+    for r in registros:
+        if coluna_origem in r:
+            r[coluna_destino] = funcao_transformacao(r[coluna_origem])
+    return registros
+
+
+# ==========================================
+# RF08 - EXPORTAÇÃO CSV E JSON COM VALIDAÇÃO
+# ==========================================
+def exportar_resultados(metricas, clientes_segmentados, pasta_saida="outputs"):
+    """
+    Exporta relatórios analíticos em CSV (com UTF-8-sig) e o resumo em JSON,
+    validando a integridade estrutural do arquivo JSON através de json.load().
+    """
+    os.makedirs(pasta_saida, exist_ok=True)
+
+    # 1. Exportação: metricas_por_mes.csv
+    caminho_mes = os.path.join(pasta_saida, "metricas_por_mes.csv")
+    with open(caminho_mes, "w", newline="", encoding="utf-8-sig") as f:
+        campos = ["ano", "mes", "mes_nome", "trimestre", "receita_total", "itens_vendidos", "total_transacoes"]
+        escritor = csv.DictWriter(f, fieldnames=campos)
+        escritor.writeheader()
+
+        meses_ordenados = sorted(metricas["mensal"].keys(), key=lambda x: (x[0], x[1]))
+        for chave in meses_ordenados:
+            dados_m = metricas["mensal"][chave]
+            escritor.writerow({
+                "ano": chave[0],
+                "mes": chave[1],
+                "mes_nome": chave[2],
+                "trimestre": chave[3],
+                "receita_total": round(dados_m["receita"], 2),
+                "itens_vendidos": dados_m["itens"],
+                "total_transacoes": dados_m["transacoes"]
+            })
+
+    # 2. Exportação: segmentacao_clientes.csv
+    caminho_clientes = os.path.join(pasta_saida, "segmentacao_clientes.csv")
+    with open(caminho_clientes, "w", newline="", encoding="utf-8-sig") as f:
+        campos_cli = ["cliente", "total_gasto", "segmento"]
+        escritor = csv.DictWriter(f, fieldnames=campos_cli)
+        escritor.writeheader()
+        for cli in clientes_segmentados:
+            escritor.writerow(cli)
+
+    # 3. Exportação: estatisticas_gerais.json
+    caminho_json = os.path.join(pasta_saida, "estatisticas_gerais.json")
+    dados_json = {
+        "faturamento_global": metricas["faturamento_global"],
+        "itens_globais": metricas["itens_globais"],
+        "ticket_medio_global": metricas["ticket_medio_global"],
+        "transacoes_acima_media": metricas["transacoes_acima_media"],
+        "top_5_produtos": [
+            {"produto": prod, "receita": round(val, 2)}
+            for prod, val in metricas["top_5_produtos"]
+        ],
+        "receita_por_categoria": {
+            cat: round(val, 2) for cat, val in metricas["categorias"].items()
+        },
+        "ticket_medio_regional": metricas["regioes"]
+    }
+
+    with open(caminho_json, "w", encoding="utf-8") as f:
+        json.dump(dados_json, f, indent=2, ensure_ascii=False)
+
+    # Validação imediata de integridade via leitura com json.load
+    with open(caminho_json, "r", encoding="utf-8") as f:
+        conferido = json.load(f)
+
+    print("\n" + "=" * 55)
+    print("=== RF08: EXPORTAÇÃO E PERSISTÊNCIA ===")
+    print("=" * 55)
+    print(f"Exportado: {caminho_mes}")
+    print(f"Exportado: {caminho_clientes}")
+    print(f"Exportado: {caminho_json}")
+    print(f"Validação JSON (Leitura OK): Faturamento conferido = R$ {conferido['faturamento_global']:,.2f}")
+
+
+# ==========================================
+# RF09 - ORQUESTRAÇÃO DO PIPELINE (MAIN)
+# ==========================================
+def main():
+    """Ponto de entrada central do pipeline analítico SalesInsight PY."""
+    print("Iniciando pipeline analítico SalesInsight PY...\n")
+
+    # 1. Garante existência do dataset inicial
+    if not os.path.exists("vendas.csv"):
+        gerar_dataset_vendas("vendas.csv")
+
+    # 2. Ingestão e Inspeção
+    dados_brutos = carregar_dataset("vendas.csv")
     inspecionar_dados(dados_brutos)
-    dados_limpos, relatorio = limpar_dados(dados_brutos)
+
+    # 3. Limpeza e Higienização
+    dados_limpos, _ = limpar_dados(dados_brutos)
+
+    # 4. Transformação e Derivação de Atributos
     dados_enriquecidos = criar_colunas_derivadas(dados_limpos)
+
+    # 5. Aplicação da Função de Ordem Superior (RF07)
+    processar_coluna(
+        dados_enriquecidos,
+        coluna_origem="receita_total",
+        coluna_destino="receita_formatada",
+        funcao_transformacao=lambda v: f"R$ {v:,.2f}"
+    )
+
+    # 6. Agregações Analíticas e Segmentação
     metricas = calcular_metricas(dados_enriquecidos)
-    clientes_seg = segmentar_clientes(dados_enriquecidos)
+    clientes_segmentados = segmentar_clientes(dados_enriquecidos)
+
+    # 7. Persistência em disco (RF08)
+    exportar_resultados(metricas, clientes_segmentados, pasta_saida="outputs")
+
+    print("\n" + "=" * 55)
+    print(">>> PIPELINE EXECUTADO COM SUCESSO DE PONTA A PONTA! <<<")
+    print("=" * 55)
+
+
+if __name__ == "__main__":
+    main()
