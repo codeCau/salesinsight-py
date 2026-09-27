@@ -1,11 +1,12 @@
 """
 SalesInsight PY — Análise de Dados de Vendas com Python
 Módulo 01 - Escopo Semanas 01 a 05
-Etapa 1: RF01 (Geração/Carga) e RF02 (Inspeção Estrutural)
+Etapa 2: RF01 (Dataset), RF02 (Inspeção) e RF03 (Limpeza com datetime e regex)
 """
 
 import csv
 import random
+import re
 from datetime import datetime, timedelta
 
 
@@ -46,7 +47,6 @@ def gerar_dataset_vendas(caminho_csv="vendas.csv", n_registros=200, seed=42):
             data_txt = data.strftime("%Y-%m-%d")
             cliente = f"Cliente_{random.randint(1, 50):03d}"
 
-            # Sujeiras propositais para testar a etapa de limpeza
             if random.random() < 0.05:
                 quantidade = ""
             if random.random() < 0.04:
@@ -104,13 +104,61 @@ def inspecionar_dados(registros):
     print(f"Total de registros: {total}")
     print(f"Colunas identificadas: {colunas}")
     print(f"Valores ausentes por coluna:\n{nulos}")
-    print("\nPrimeiros registros brutos:")
-    for linha in registros[:3]:
-        print(f"  {linha}")
     return registros
+
+
+# ==========================================
+# RF03 - LIMPEZA E TRATAMENTO DOS DADOS
+# ==========================================
+def limpar_dados(registros):
+    """Limpa textos, converte tipos numéricos/datas e descarta nulos críticos."""
+    relatorio = {
+        "iniciais": len(registros),
+        "removidos_data": 0,
+        "removidos_nulos": 0,
+        "finais": 0
+    }
+    padrao_cliente = re.compile(r"^Cliente_\d{3}$", flags=re.IGNORECASE)
+    limpos = []
+
+    for linha in registros:
+        for campo in ("cliente", "produto", "categoria", "regiao"):
+            linha[campo] = linha[campo].strip()
+
+        try:
+            linha["data_venda"] = datetime.strptime(linha["data_venda"], "%Y-%m-%d")
+        except ValueError:
+            relatorio["removidos_data"] += 1
+            continue
+
+        if linha["quantidade"] == "" or linha["preco_unitario"] == "":
+            relatorio["removidos_nulos"] += 1
+            continue
+
+        linha["quantidade"] = int(float(linha["quantidade"]))
+        linha["preco_unitario"] = float(linha["preco_unitario"])
+
+        nome_limpo = re.sub(r"[^A-Za-z0-9_]", "", linha["cliente"])
+        linha["cliente"] = nome_limpo
+        linha["cliente_fora_do_padrao"] = padrao_cliente.match(nome_limpo) is None
+
+        limpos.append(linha)
+
+    relatorio["finais"] = len(limpos)
+
+    print("\n" + "=" * 50)
+    print("=== RF03: RELATÓRIO DE LIMPEZA ===")
+    print("=" * 50)
+    print(f"Registros iniciais:     {relatorio['iniciais']}")
+    print(f"Descartados por data:   {relatorio['removidos_data']}")
+    print(f"Descartados por nulos:  {relatorio['removidos_nulos']}")
+    print(f"Registros higienizados: {relatorio['finais']}")
+
+    return limpos, relatorio
 
 
 if __name__ == "__main__":
     gerar_dataset_vendas()
     dados_brutos = carregar_dataset()
     inspecionar_dados(dados_brutos)
+    dados_limpos, relatorio = limpar_dados(dados_brutos)
