@@ -1,7 +1,7 @@
 """
 SalesInsight PY — Análise de Dados de Vendas com Python
 Módulo 01 - Escopo Semanas 01 a 05
-Etapa 2: RF01 (Dataset), RF02 (Inspeção) e RF03 (Limpeza com datetime e regex)
+Etapa 4: RF01 ao RF04 (Dataset, Inspeção, Limpeza e Colunas Derivadas)
 """
 
 import csv
@@ -74,7 +74,7 @@ def gerar_dataset_vendas(caminho_csv="vendas.csv", n_registros=200, seed=42):
                 "preco_unitario": preco,
             })
 
-    print(f"[RF01] Dataset gerado com {n_registros} registros em '{caminho_csv}'.")
+    print(f"[RF01] Dataset pronto em '{caminho_csv}'.")
 
 
 def carregar_dataset(caminho_csv="vendas.csv"):
@@ -102,8 +102,8 @@ def inspecionar_dados(registros):
     print("=== RF02: INSPEÇÃO INICIAL DO DATASET ===")
     print("=" * 50)
     print(f"Total de registros: {total}")
-    print(f"Colunas identificadas: {colunas}")
-    print(f"Valores ausentes por coluna:\n{nulos}")
+    print(f"Colunas: {colunas}")
+    print(f"Campos nulos identificados: {nulos}")
     return registros
 
 
@@ -157,8 +157,61 @@ def limpar_dados(registros):
     return limpos, relatorio
 
 
+# ==========================================
+# RF04 - CRIAÇÃO DE COLUNAS DERIVADAS
+# ==========================================
+def criar_colunas_derivadas(registros):
+    """
+    Calcula receita total, decompõe a data em partes de calendário
+    e classifica a faixa de valor por item unitário com if/elif/else.
+    """
+    meses_nomes = [
+        "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ]
+
+    for r in registros:
+        # 1. Receita total da transação
+        r["receita_total"] = round(r["quantidade"] * r["preco_unitario"], 2)
+
+        # 2. Decomposição da data
+        data: datetime = r["data_venda"]
+        r["mes"] = data.month
+        r["mes_nome"] = meses_nomes[data.month]
+        r["ano"] = data.year
+
+        # 3. Trimestre fiscal
+        if data.month <= 3:
+            r["trimestre"] = "Q1"
+        elif data.month <= 6:
+            r["trimestre"] = "Q2"
+        elif data.month <= 9:
+            r["trimestre"] = "Q3"
+        else:
+            r["trimestre"] = "Q4"
+
+        # 4. Faixa de valor por preço unitário
+        preco = r["preco_unitario"]
+        if preco < 500:
+            r["faixa_receita_item"] = "Baixo Valor"
+        elif preco <= 2000:
+            r["faixa_receita_item"] = "Médio Valor"
+        else:
+            r["faixa_receita_item"] = "Alto Valor"
+
+    print("\n" + "=" * 50)
+    print("=== RF04: COLUNAS DERIVADAS CRIADAS ===")
+    print("=" * 50)
+    print("Novas colunas geradas: receita_total, mes, mes_nome, ano, trimestre, faixa_receita_item")
+    if registros:
+        print(f"Exemplo de linha enriquecida:\n  {registros[0]}")
+
+    return registros
+
+
 if __name__ == "__main__":
     gerar_dataset_vendas()
     dados_brutos = carregar_dataset()
     inspecionar_dados(dados_brutos)
     dados_limpos, relatorio = limpar_dados(dados_brutos)
+    dados_enriquecidos = criar_colunas_derivadas(dados_limpos)
