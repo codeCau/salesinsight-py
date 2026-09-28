@@ -59,7 +59,7 @@ salesinsight-py/
 │   ├── metricas_por_mes.csv        # Consolidado mensal de receitas e volumes
 │   ├── segmentacao_clientes.csv    # Carteira de clientes classificada (Bronze/Prata/Ouro)
 │   ├── estatisticas_gerais.json    # Indicadores globais da base higienizada
-├── planejamento/
+└── planejamento/
     └── kanban-salesinsight-py.md          # Registro da organização e backlog do projeto
 ```
 
@@ -109,4 +109,4 @@ O projeto utiliza exclusivamente bibliotecas built-in do Python, dispensando a i
 
 Assista à apresentação do projeto abordando o objetivo de negócio, a arquitetura do código, as justificativas técnicas e a demonstração do pipeline rodando do início ao fim:
 
-- **Link do Vídeo:** [Clique aqui para assistir]()
+- **Link do Vídeo:** [Clique aqui para assistir](https://youtu.be/2IYSSneG_WY)
