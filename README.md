@@ -52,15 +52,15 @@ O **SalesInsight PY** simula o fluxo de trabalho de um Analista de Dados Júnior
 
 ```text
 salesinsight-py/
-|-- salesinsight.py                 # Script orquestrador do pipeline analítico
-|-- vendas.csv                      # Dataset bruto gerado ou carregado
-|-- README.md                       # Documentação completa e instruções
-|-- outputs/                        # Diretório criado em tempo de execução
-|   |-- metricas_por_mes.csv        # Consolidado mensal de receitas e volumes
-|   |-- segmentacao_clientes.csv    # Carteira de clientes classificada (Bronze/Prata/Ouro)
-|   |-- estatisticas_gerais.json    # Indicadores globais da base higienizada
-|-- planejamento/
-    |-- kanban-salesinsight-py.md          # Registro da organização e backlog do projeto
+├── salesinsight.py                 # Script orquestrador do pipeline analítico
+├── vendas.csv                      # Dataset bruto gerado ou carregado
+├── README.md                       # Documentação completa e instruções
+├── outputs/                        # Diretório criado em tempo de execução
+│   ├── metricas_por_mes.csv        # Consolidado mensal de receitas e volumes
+│   ├── segmentacao_clientes.csv    # Carteira de clientes classificada (Bronze/Prata/Ouro)
+│   ├── estatisticas_gerais.json    # Indicadores globais da base higienizada
+├── planejamento/
+    └── kanban-salesinsight-py.md          # Registro da organização e backlog do projeto
 ```
 
 ---
